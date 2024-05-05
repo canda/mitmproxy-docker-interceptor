@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mitmproxy-wireguard-server:
+    image: mitmproxy/mitmproxy
+    container_name: mitmproxy-wireguard
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8080:8080"  # Port for mitmweb
+      - "51820:51820/udp"  # Port for WireGuard
+    command: mitmweb --mode wireguard --web-host 0.0.0.0 --web-port 8080 --ssl-insecure
+    volumes:
+      - "./mitmproxy-logs:/var/log/mitmproxy"
+      - "./mitmproxy-config:/home/mitmproxy/.mitmproxy"
+      - "./server_config.conf:/etc/wireguard/wg0.conf"
+    networks:
+      mitmproxy-wireguard-network:
+        ipv4_address: 172.20.0.3
+    restart: unless-stopped
+
+  wireguard-client:
+    image: linuxserver/wireguard
+    container_name: wg-client
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - "./client_config.conf:/config/wg0.conf"
+    networks:
+      - mitmproxy-wireguard-network
+    restart: unless-stopped
+
+networks:
+  mitmproxy-wireguard-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.20.0.0/16"
